@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f5ef">
+  <meta name="description" content="Buscaminas en un cubo y 12 puzles fijos que se resuelven sin adivinar. Sigue las pistas de líneas y grupos de minas a través de seis caras.">
+  <title>Cubemine — Seis caras. Un campo de minas.</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='%23233329'/%3E%3Cpath%20d='M32%2011%2051%2022v22L32%2055%2013%2044V22z'%20fill='%23c4ec9f'/%3E%3Cpath%20d='m13%2022%2019%2011%2019-11M32%2033v22'%20fill='none'%20stroke='%23233329'%20stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-cube" viewbox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z M3 7l9 5 9-5 M12 12v10"></path></symbol>
+    <symbol id="i-flag" viewbox="0 0 24 24"><path d="M5 21V3m0 1c5-4 9 4 14 0v10c-5 4-9-4-14 0"></path></symbol>
+    <symbol id="i-restart" viewbox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 7 M3 4v6h6"></path></symbol>
+    <symbol id="i-pointer" viewbox="0 0 24 24"><path d="m5 3 15 10-7 1-3 7-5-18Z"></path></symbol>
+    <symbol id="i-net" viewbox="0 0 24 24"><path d="M8 2h6v6H8z M2 8h6v6H2z M8 8h6v6H8z M14 8h6v6h-6z M8 14h6v6H8z"></path></symbol>
+    <symbol id="i-rotate" viewbox="0 0 24 24"><path d="M20 13c0 4-4 7-9 7-4 0-8-2-8-5s4-5 8-5 M7 6l4 4-4 4 M14 3l5 3v6 M14 3v6l5 3 M14 9l-3 2"></path></symbol>
+    <symbol id="i-clock" viewbox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 6v6l4 2"></path></symbol>
+    <symbol id="i-mine" viewbox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 2v5m0 10v5M2 12h5m10 0h5M5 5l4 4m6 6 4 4M5 19l4-4m6-6 4-4"></path></symbol>
+    <symbol id="i-check" viewbox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
+    <symbol id="i-close" viewbox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"></path></symbol>
+    <symbol id="i-key" viewbox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"></rect><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h.01M18 13h.01M8 16h8"></path></symbol>
+  </defs></svg>
+  <div class="app-shell">
+    <header class="header">
+      <a class="brand" href="./" aria-label="Inicio de Cubemine" data-i18n-attr="aria-label:home"><span class="brand-icon"><svg><use href="#i-cube"></use></svg></span>cubemine<span class="edition">3D</span></a>
+      <div class="header-right"><span class="header-tagline" data-i18n-html="tagline">UN POCO DE PERSPECTIVA LO CAMBIA TODO</span><label class="language-picker"><span class="sr-only" data-i18n-html="languageLabel">Idioma</span><select id="language" aria-label="Idioma" data-i18n-attr="aria-label:languageLabel"><option value="es" lang="es" selected>Español</option><option value="en" lang="en">English</option></select></label><button class="help-button" id="help-open" data-i18n-html="help"><span class="question">?</span> Cómo jugar</button></div>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><div class="eyebrow" data-i18n-html="eyebrow"><span></span> EL CLÁSICO, CON UN GIRO</div><h1 id="page-title" data-i18n-html="headline">Seis caras. Un campo de minas.</h1><p id="intro-copy" data-i18n-html="intro">Sigue las pistas. Gira el cubo. Encuentra el camino.</p></div>
+        <div class="game-actions"><label id="difficulty-picker" class="difficulty-label" for="difficulty"><span data-i18n-html="difficulty">DIFICULTAD</span><select id="difficulty"><option value="easy" data-i18n-html="easyOption">Fácil · 4 × 4</option><option value="classic" selected data-i18n-html="classicOption">Clásica · 6 × 6</option><option value="expert" data-i18n-html="expertOption">Experta · 8 × 8</option></select></label><label id="puzzle-picker" class="difficulty-label" for="puzzle-level" hidden><span data-i18n-html="puzzle">PUZLE</span><select id="puzzle-level"></select></label><button id="new-game" class="primary-button"><svg><use href="#i-restart"></use></svg>Nueva partida</button></div>
+      </section>
+      <div class="setup-bar">
+        <div class="game-kind" aria-label="Modo de juego" data-i18n-attr="aria-label:gameMode"><button id="game-random" aria-pressed="true" data-i18n-html="random">Aleatorio</button><button id="game-puzzles" aria-pressed="false" data-i18n-html="puzzles">Puzles <span>12</span></button></div>
+        <span class="mode-description" id="mode-description">Minas nuevas. Primera jugada segura.</span>
+      </div>
+      <div class="game-layout">
+        <section class="playground" aria-label="Tablero de buscaminas" data-i18n-attr="aria-label:board">
+          <div class="stage-toolbar"><div class="view-toggle" aria-label="Vista del tablero" data-i18n-attr="aria-label:boardView"><button id="view-cube" aria-pressed="true" data-i18n-html="cubeView"><svg><use href="#i-cube"></use></svg>Cubo 3D</button><button id="view-net" aria-pressed="false" data-i18n-html="netView"><svg><use href="#i-net"></use></svg>Desplegar</button></div><div class="stage-meta"><span id="board-size">6 × 6</span><span class="meta-dot">·</span><span id="surface-faces" data-i18n-html="sixFaces">6 CARAS</span></div></div>
+          <div class="board-viewport" id="board-viewport"><div class="scene" id="scene"><div class="ground-shadow"></div><div class="cube" id="cube" aria-label="Campo de minas en un cubo giratorio" data-i18n-attr="aria-label:cubeLabel"></div></div></div>
+          <div class="stage-bottom"><span class="safe-start" id="stage-status"><span class="status-dot"></span>La primera jugada siempre es segura</span><div class="camera-controls"><button id="zoom-out" aria-label="Alejar" title="Alejar" data-i18n-attr="aria-label:zoomOut title:zoomOutTitle">−</button><button id="reset-view" aria-label="Restablecer vista del cubo" title="Restablecer vista" data-i18n-attr="aria-label:resetView title:resetTitle"><svg><use href="#i-rotate"></use></svg></button><button id="zoom-in" aria-label="Acercar" title="Acercar" data-i18n-attr="aria-label:zoomIn title:zoomInTitle">+</button></div></div>
+          <div class="orbit-hint" id="orbit-hint"><svg><use href="#i-rotate"></use></svg><span>Arrastra para girar</span><i></i><span>Rueda para acercar</span></div>
+          <div class="outcome" id="outcome" hidden><span class="outcome-symbol" id="outcome-symbol"></span><div><strong id="outcome-title"></strong><p id="outcome-description"></p></div><button id="play-again">Volver a jugar <span>↗</span></button></div>
+        </section>
+        <aside class="sidebar">
+          <section class="control-card">
+            <div class="card-heading"><span data-i18n-html="expedition">TU EXPEDICIÓN</span><span class="live-indicator" id="live-indicator">LISTO</span></div>
+            <div class="puzzle-record" id="puzzle-record" hidden><span id="puzzles-solved">0 / 12 resueltos</span><span id="mistakes">0 errores</span></div><div class="stats"><div><span class="stat-label" data-i18n-html="minesLeft"><svg><use href="#i-flag"></use></svg>MINAS RESTANTES</span><strong id="mines-left">036</strong></div><div><span class="stat-label" data-i18n-html="time"><svg><use href="#i-clock"></use></svg>TIEMPO</span><strong id="timer">00:00</strong></div></div>
+            <div class="progress-label"><span data-i18n-html="clearedLabel">Casillas seguras descubiertas</span><span><b id="cleared">0</b><span class="muted"> / </span><span id="safe-total">180</span></span></div><div class="progress-track" role="progressbar" aria-label="Casillas seguras descubiertas" aria-valuemin="0" aria-valuemax="180" aria-valuenow="0" id="progress" data-i18n-attr="aria-label:progressLabel"><div id="progress-fill"></div></div>
+            <div class="card-divider"></div>
+            <div class="section-label" data-i18n-html="makeMove">TU JUGADA <kbd>F</kbd></div>
+            <div class="mode-toggle"><button id="mode-reveal" aria-pressed="true" data-i18n-html="revealButton"><svg><use href="#i-pointer"></use></svg>Descubrir</button><button id="mode-flag" aria-pressed="false" data-i18n-html="flagButton"><svg><use href="#i-flag"></use></svg>Marcar</button></div>
+            <p class="microcopy" id="mode-help">Pulsa una casilla para descubrir qué esconde.</p>
+            <div class="card-divider"></div>
+            <div class="section-label" data-i18n-html="exploreFaces">EXPLORA LAS CARAS <span id="face-count">0 / 6</span></div>
+            <div class="face-navigation" id="face-navigation"></div>
+            <p id="face-help" class="microcopy face-help">Elige una cara para verla de frente.</p>
+          </section>
+          <section class="tip-card"><div class="tip-top"><span class="tip-icon"><svg><use href="#i-cube"></use></svg></span><span id="tip-label">PIENSA EN 3D</span><span class="tip-number" id="tip-number">01 / 01</span></div><h2 id="tip-title">Las pistas cruzan las esquinas.</h2><p id="tip-copy">Cada número cuenta las minas de todas las casillas que lo tocan, incluso las de otra cara.</p><div id="clue-inspector" hidden><span class="ring-caption" data-i18n-html="ringCaption">ANILLO VECINO · LOS EXTREMOS SE UNEN ↻</span><div id="neighbor-ring" class="neighbor-ring"></div><small data-i18n-html="ringHelp">Toca una casilla vecina para localizarla en el cubo.</small></div><div class="puzzle-legend" id="puzzle-legend" hidden><span data-rule="together" data-i18n-html="legendTogether"><b>{n}</b> Un solo grupo</span><span data-rule="apart" data-i18n-html="legendApart"><b>-n-</b> Grupos separados</span><span data-rule="line" data-i18n-html="legendLine"><b>↳ n</b> Total de la línea</span></div><button id="puzzle-hint" hidden data-i18n-html="hintButton">Ver una deducción <span>↗</span></button><small id="hint-counter" hidden></small><button id="rules-open" data-i18n-html="rulesButton">Repasar las reglas <span>↗</span></button></section>
+        </aside>
+      </div>
+      <footer class="footer"><span data-i18n-html="footer"><span class="footer-dot"></span>Una superficie conectada. Infinitas posibilidades.</span><button id="shortcuts-open" data-i18n-html="shortcuts"><svg><use href="#i-key"></use></svg>Controles y atajos</button></footer>
+    </main>
+  </div>
+  <div class="sr-only" aria-live="polite" id="announcer"></div>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow" data-i18n-html="helpEyebrow">OTRA PERSPECTIVA DEL CLÁSICO</span><button id="help-close" class="icon-button" aria-label="Cerrar instrucciones" data-i18n-attr="aria-label:closeHelp"><svg><use href="#i-close"></use></svg></button></div><h2 id="help-title" data-i18n-html="helpTitle">Piensa en tres dimensiones.</h2><p class="dialog-intro" data-i18n-html="helpIntro">Descubre todas las casillas seguras de esta superficie conectada. Deja las minas atrás.</p>
+    <div class="rule-row"><span class="rule-example number-example">2</span><div><h3 data-i18n-html="rule1Title">Lee los números</h3><p data-i18n-html="rule1Body">Cada número indica cuántas minas hay en las casillas que tocan sus bordes o esquinas, incluidas las de otras caras. Una casilla en una esquina del cubo tiene 7 vecinas; las demás tienen 8. Un número sin símbolos no indica cómo se distribuyen las minas. En Puzles, un 0 visible significa que todas sus vecinas son seguras; púlsalo para descubrirlas.</p></div></div>
+    <div class="rule-row"><span class="rule-example"><svg><use href="#i-flag"></use></svg></span><div><h3 data-i18n-html="rule2Title">Dos formas de jugar</h3><p data-i18n-html="rule2Body"><strong>Aleatorio:</strong> minas nuevas en cada partida. La primera casilla y sus vecinas son seguras. Una mina termina la partida.<br><strong>Puzles:</strong> 12 tableros fijos con pistas iniciales. Todos se pueden resolver sin adivinar. Los errores se cuentan sin terminar el puzle. «Ver una deducción» explica una jugada demostrable. Tu progreso se guarda en este dispositivo.</p></div></div>
+    <div class="rule-row"><span class="rule-example special-example">{3}</span><div><h3 data-i18n-html="rule3Title">Un solo grupo continuo</h3><p data-i18n-html="rule3Body">Las llaves indican que todas las minas vecinas son consecutivas en el anillo que rodea la pista. El grupo puede cruzar el final del anillo o un borde del cubo. Toca una pista descubierta para ver sus vecinas en sentido horario; los dos extremos de la tira están unidos.</p></div></div>
+    <div class="rule-row"><span class="rule-example special-example">-3-</span><div><h3 data-i18n-html="rule4Title">Grupos separados</h3><p data-i18n-html="rule4Body">Los guiones indican que las minas vecinas <strong>no son todas consecutivas</strong>: forman al menos dos grupos separados por casillas seguras. Algunas minas sí pueden tocarse entre ellas.</p></div></div>
+    <div class="rule-row"><span class="rule-example special-example">↳ 2</span><div><h3 data-i18n-html="rule5Title">Lee una línea completa</h3><p data-i18n-html="rule5Body">Un número fuera de una cara indica cuántas minas hay en esa fila o columna, incluidas las marcadas. Las líneas terminan en el borde de la cara. Selecciona un botón de cara subrayado para leer sus pistas exteriores, o usa Desplegar para ver todas las caras. Toca un número exterior para resaltar su línea.</p></div></div>
+    <div class="rule-row"><span class="rule-example"><svg><use href="#i-rotate"></use></svg></span><div><h3 data-i18n-html="rule6Title">Muévete por el cubo</h3><p data-i18n-html="rule6Body">Arrastra para girar y usa la rueda para acercar o alejar. Haz clic derecho, mantén pulsada una casilla o elige Marcar para colocar una bandera. Tras marcar las minas de un número descubierto, púlsalo para abrir sus vecinas restantes.</p></div></div>
+    <div class="keyboard-guide"><span data-i18n-html="key1"><kbd>F</kbd> Alternar marca</span><span data-i18n-html="key2"><kbd>N</kbd> Nueva partida</span><span data-i18n-html="key3"><kbd>←</kbd><kbd>→</kbd> Girar</span><span data-i18n-html="key4"><kbd>+</kbd><kbd>−</kbd> Zoom</span><span data-i18n-html="key5"><kbd>H</kbd> Restablecer vista</span><span data-i18n-html="key6"><kbd>?</kbd> Ayuda</span></div>
+    <p class="keyboard-note" data-i18n-html="keyboardNote">Teclado: selecciona un botón de cara y pulsa Tab para entrar en sus casillas. Las flechas cambian de casilla; Intro descubre o marca.</p><button id="help-done" class="primary-button" data-i18n-html="letsPlay">A jugar <span>↗</span></button>
+  </dialog>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>

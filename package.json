@@ -1,0 +1,14 @@
+{
+  "name": "cubemine",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Cube-surface Minesweeper with Spanish and English support and 12 fixed logic puzzles.",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check.mjs"
+  }
+}
