@@ -4,16 +4,15 @@ import {directionalNeighbor} from './shapes.mjs';
 import {clueText} from './puzzle-rules.mjs';
 import {PUZZLES,CHAPTERS} from './puzzles.mjs';
 import {nextDeduction,visibleOpening} from './deduction.mjs';
-import {fromEuler,rotateOnScreen,interpolate,cssTransform,facePoint,projectClue} from './camera.mjs';
+import {fromEuler,rotateOnScreen,interpolate,cssTransform,surfaceReadingAngles} from './camera.mjs';
+import {icon,surfaceMark,tileMark} from './markings.mjs';
 
 const $=id=>document.getElementById(id);
-const icon=name=>`<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const cube=$('cube'),viewport=$('board-viewport'),playground=document.querySelector('.playground');
-const scene=cube.parentElement,clueLayer=document.createElement('div');
-clueLayer.className='clue-layer';clueLayer.setAttribute('aria-hidden','true');scene.append(clueLayer);
+const scene=cube.parentElement;
 let game,tiles=[],view='cube',mode='reveal',kind='random',focusedFace=null;
 let orientation=fromEuler(-25,-34),cameraGoal=orientation,zoom=1,zoomGoal=1,cameraAnimation=null;
-let clueLabels=[],cameraFrame=null,gesture=null,longPress=null,suppressUntil=0,heldToFlag=false;
+let boardFaces=[],readingFrame=null,gesture=null,longPress=null,suppressUntil=0,heldToFlag=false;
 let lastStatus='ready',focusId=0,hinted=new Set(),lineHighlights=new Set(),inspected=null,progress={},storageAvailable=true;
 try{const stored=JSON.parse(localStorage.getItem('cubemine-puzzles-v1'));if(stored&&typeof stored==='object'&&!Array.isArray(stored))progress=stored;}catch{}
 const announce=text=>{$('announcer').textContent=text;};
@@ -47,25 +46,25 @@ function tileLabel(cell){
   return `${cellName(game,cell.id)}: ${state}${special?t(special==='together'?'specialTogether':'specialApart'):''}`;
 }
 function buildBoard(){
-  cube.replaceChildren();clueLayer.replaceChildren();clueLabels=[];tiles=[];cube.style.setProperty('--n',game.size);$('face-navigation').replaceChildren();
+  cube.replaceChildren();boardFaces=[];readingFrame=null;tiles=[];cube.style.setProperty('--n',game.size);$('face-navigation').replaceChildren();
   for(const face of game.faces){
     const section=document.createElement('div');section.className=`face face-${face.key}`;section.dataset.face=face.key;section.setAttribute('role','group');section.setAttribute('aria-label',t('faceGroup',{face:faceName(face.key)}));
     const caption=document.createElement('span');caption.className='face-caption';caption.textContent=faceName(face.key).toUpperCase();caption.setAttribute('aria-hidden','true');section.append(caption);
     for(const id of face.cellIds){
       const tile=document.createElement('button');tile.type='button';tile.className='tile';tile.tabIndex=id===focusId?0:-1;tile.dataset.id=id;tile.setAttribute('aria-label',tileLabel(game.cells[id]));section.append(tile);tiles[id]=tile;
-      addClueLabel(tile,section,face,id);
     }
     if(kind==='puzzles')for(const axis of ['row','col']){
       const rail=document.createElement('div');rail.className=`line-clues line-${axis}s`;
       for(let i=0;i<game.size;i++){
         const line=game.lines.find(l=>l.face===face.key&&l.axis===axis&&l.index===i);
         const label=document.createElement(line?'button':'span');
-        if(line){label.type='button';label.className='line-clue';label.dataset.line=line.id;label.innerHTML=`<span class="line-number">${line.count}</span>`;label.title=t('lineLabel',{line:lineName(line),count:line.count});label.setAttribute('aria-label',label.title+t('highlightLine'));label.addEventListener('click',event=>{event.stopPropagation();inspectLine(line);});addClueLabel(label,section,face,null,line);}
+        if(line){label.type='button';label.className='line-clue';label.dataset.line=line.id;label.innerHTML=surfaceMark(line.count);label.title=t('lineLabel',{line:lineName(line),count:line.count});label.setAttribute('aria-label',label.title+t('highlightLine'));label.addEventListener('click',event=>{event.stopPropagation();inspectLine(line);});}
         rail.append(label);
       }
       section.append(rail);
     }
     cube.append(section);
+    boardFaces.push({face, section, marks:[]});
     const button=document.createElement('button');button.id=`face-${face.key}`;button.className='face-nav-button';button.textContent=faceLetter(face.key);button.title=faceName(face.key);
     if(game.lines?.some(l=>l.face===face.key)){button.classList.add('has-lines');button.title+=t('hasLines');}
     button.addEventListener('click',()=>focusFace(face.key));
@@ -117,7 +116,7 @@ function render(){
     const special=cell.revealed&&game.clueKinds?.[cell.id];
     const className=`tile${cell.revealed?' revealed':''}${cell.flagged?' flagged':''}${showMine?' mine':''}${game.exploded===cell.id?' exploded':''}${incorrect?' incorrect':''}${hinted.has(cell.id)?' hinted':''}${game.error===cell.id?' move-error':''}${special?' special-clue':''}${lineHighlights.has(cell.id)?' line-related':''}${inspected===cell.id?' inspected':''}`;
     if(tile.className!==className)tile.className=className;
-    const content=incorrect?icon('close'):cell.flagged?icon('flag'):showMine?icon('mine'):cell.revealed&&(cell.count||kind==='puzzles')?`<span class="tile-number" aria-hidden="true">${clueText(cell.count,special)}</span>`:'';
+    const content=tileMark(cell,{showMine,incorrect,special,showZero:kind==='puzzles'});
     if(tile.dataset.content!==content){tile.innerHTML=content;tile.dataset.content=content;}
     tile.dataset.count=cell.count;tile.setAttribute('aria-label',tileLabel(cell));
   }
@@ -141,7 +140,8 @@ function render(){
     $('puzzle-hint').disabled=game.status==='won';
   }
   if(game.status!==lastStatus){if(game.status==='lost'||game.status==='won')finish();lastStatus=game.status;}
-  syncClueLabels();
+  measureSurfaceMarks();
+  orientSurfaceMarks();
 }
 function finish(){
   const won=game.status==='won';$('outcome').hidden=false;$('outcome').classList.toggle('is-loss',!won);$('outcome-symbol').innerHTML=icon(won?'check':'mine');
@@ -166,50 +166,49 @@ function act(id,flag=mode==='flag'){
   if(['ready','playing'].includes(game.status))announce(flag?t('flagAnnouncement',{tile:tileLabel(game.cells[id]),count:game.mineCount-game.flagCount}):t('revealAnnouncement',{tile:tileLabel(game.cells[id]),opened:game.revealedCount-before,count:game.revealedCount,total:game.safeCount}));
 }
 function setMode(next){mode=next;setPressed('mode-reveal',mode==='reveal');setPressed('mode-flag',mode==='flag');$('mode-help').textContent=t(mode==='reveal'?'revealHelp':'flagHelp');playground.classList.toggle('flag-mode',mode==='flag');announce(t(mode==='flag'?'modeFlagAnnouncement':'modeRevealAnnouncement'));}
-function addClueLabel(anchor,section,face,cellId,line=null){
-  const label=document.createElement('span');label.className='clue-label';label.hidden=true;
-  if(cellId!==null)label.dataset.cell=cellId;else label.dataset.line=line.id;
-  clueLayer.append(label);clueLabels.push({anchor,section,face,cellId,line,label,active:false});
-}
-function syncClueLabels(){
-  for(const entry of clueLabels){
-    const cell=entry.cellId===null?null:game.cells[entry.cellId];
-    entry.active=Boolean(entry.line||cell?.revealed&&!cell.mine&&(cell.count||kind==='puzzles'));
-    const content=entry.line?String(entry.line.count):entry.active?clueText(cell.count,game.clueKinds?.[cell.id]):'';
-    if(entry.label.textContent!==content)entry.label.textContent=content;
-  }
-  measureClueLabels();updateClueLabels();
-}
-function measureClueLabels(){
-  const size=cube.offsetWidth,perspective=getComputedStyle(scene),origin=perspective.perspectiveOrigin.split(' ').map(parseFloat);
-  cameraFrame={centerX:cube.offsetLeft+size/2,centerY:cube.offsetTop+cube.offsetHeight/2,originX:origin[0],originY:origin[1],perspective:parseFloat(perspective.perspective)||1250};
-  if(view==='net')return;
-  for(const entry of clueLabels){
-    if(!entry.active)continue;
-    let x=entry.anchor.offsetWidth/2,y=entry.anchor.offsetHeight/2,element=entry.anchor;
-    while(element&&element!==entry.section){
-      x+=element.offsetLeft;y+=element.offsetTop;element=element.offsetParent;
-      if(element){x+=element.clientLeft;y+=element.clientTop;}
+function measureSurfaceMarks() {
+  if (view === 'net') return;
+  const halfSize = cube.offsetWidth / 2;
+  const sceneStyle = getComputedStyle(scene);
+  readingFrame = {
+    halfSize,
+    eyeX: parseFloat(sceneStyle.perspectiveOrigin) - (cube.offsetLeft + halfSize),
+    perspective: parseFloat(sceneStyle.perspective),
+  };
+  // Cache untransformed layout centers after a reveal, rebuild, or resize.
+  // During a drag we only change the in-plane angle of existing marks.
+  for (const surface of boardFaces) {
+    surface.marks = [];
+    for (const element of surface.section.querySelectorAll('.surface-mark')) {
+      let ancestor = element;
+      let x = element.offsetWidth / 2 - halfSize;
+      let y = element.offsetHeight / 2 - halfSize;
+      while (ancestor && ancestor !== surface.section) {
+        x += ancestor.offsetLeft;
+        y += ancestor.offsetTop;
+        ancestor = ancestor.offsetParent;
+        if (ancestor) {
+          x += ancestor.clientLeft;
+          y += ancestor.clientTop;
+        }
+      }
+      surface.marks.push({element, x, y});
     }
-    Object.assign(entry,facePoint(entry.face,x-size/2,y-size/2,size/2));
-    const style=getComputedStyle(entry.anchor);
-    entry.label.style.fontSize=style.fontSize;entry.label.style.letterSpacing=style.letterSpacing;entry.label.style.color=style.color;
   }
 }
-function updateClueLabels(){
-  if(view==='net'||!cameraFrame)return;
-  for(const entry of clueLabels){
-    const projected=entry.active&&entry.point&&(!entry.line||focusedFace===entry.face.key)?projectClue(entry.point,entry.normal,orientation,zoom,cameraFrame):null;
-    // Near a silhouette the cells collapse to a sliver. Fade their labels to avoid overlap.
-    const opacity=projected?Math.max(0,Math.min(1,(projected.facing-.12)/.23)):0;
-    entry.label.hidden=!opacity;
-    if(!opacity)continue;
-    entry.label.style.left=`${projected.x}px`;entry.label.style.top=`${projected.y}px`;
-    entry.label.style.transform=`translate(-50%,-50%) scale(${projected.scale})`;
-    entry.label.style.opacity=opacity;
+
+function orientSurfaceMarks() {
+  if (view === 'net' || !readingFrame) return;
+  for (const {face, marks} of boardFaces) {
+    if (!marks.length) continue;
+    const angleAt = surfaceReadingAngles(face, orientation, zoom, readingFrame);
+    for (const {element, x, y} of marks) {
+      element.style.setProperty('--reading-angle', `${angleAt(x, y)}deg`);
+    }
   }
 }
-function updateCamera(){cube.style.transform=cssTransform(orientation,zoom);updateClueLabels();}
+
+function updateCamera(){cube.style.transform=cssTransform(orientation,zoom);orientSurfaceMarks();}
 function stopCameraAnimation(){
   if(cameraAnimation!==null)cancelAnimationFrame(cameraAnimation);
   cameraAnimation=null;cameraGoal=orientation;zoomGoal=zoom;
@@ -235,7 +234,7 @@ function resize(){
     playground.style.setProperty('--net-width',`${size*4+gap*3+padding}px`);playground.style.setProperty('--net-height',`${size*3+gap*2+padding}px`);
   }else{size=Math.min(306,(rect.width-46)/1.55,(rect.height-56)/1.5);size=Math.max(135,size);}
   playground.style.setProperty('--size',`${size}px`);
-  measureClueLabels();updateClueLabels();
+  measureSurfaceMarks();orientSurfaceMarks();
 }
 function updateViewCopy(){
   $('orbit-hint').innerHTML=view==='cube'?`${icon('rotate')}<span>${t('drag')}</span><i></i><span>${t('scrollZoom')}</span>`:`${icon('net')}<span>${t('allFaces',{count:game.faces.length})}</span>`;

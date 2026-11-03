@@ -2,7 +2,7 @@
 
 A Minesweeper prototype played on the six connected faces of a cube. Spanish is the default language; English is available in the header.
 
-The current version uses screen-relative dragging: dragging right moves the facing surface right, and dragging down moves it down, even after turning the cube upside down. Numbers stay upright and centered on their cells, including `{n}`, `-n-` and outside line clues. Rotation does not change zoom.
+Dragging right moves the facing surface right, and dragging down moves it down, even with the cube upside down. Numbers, flags and mines sit flat on the tiles. Each mark turns within its face so its vertical direction stays readable while its width follows the face’s perspective. The same treatment applies to `{n}`, `-n-` and outside line clues.
 
 **This folder is ready to become your own GitHub repository.** It has no account connection, API key, external runtime dependency or ChatGPT hosting requirement. The playable site is entirely in `dist/`.
 
@@ -60,7 +60,7 @@ npm run check
 npm test
 ```
 
-All 45 automated checks pass. They cover the original Minesweeper rules, all 12 fixed puzzle solutions, visible opening deductions, hidden-data independence, Spanish and English parity, saved progress, screen-relative rotation from every face and upside-down views, stable zoom, clue projection and serving under a repository subpath. The workflow has not been executed in your GitHub account yet. Browser layout and pointer/touch QA remain unverified because the preview service was unavailable during this update.
+All 47 automated checks pass. They cover the Minesweeper rules, all 12 fixed puzzle solutions, visible opening deductions, hidden-data independence, Spanish and English parity, saved progress, screen-relative rotation, stable zoom, the orientation and perspective of surface marks, and serving under a repository subpath. Visual and hands-on checks are pending because the browser preview service was unavailable for this release.
 
 ## Play
 
@@ -76,7 +76,8 @@ Progress is saved in the browser. Moving to a new domain starts a separate save;
 | Location | Purpose |
 | --- | --- |
 | `dist/` | Complete playable game; deployed by Pages |
-| `dist/camera.mjs` | Screen-relative rotation, smooth camera transitions and clue projection |
+| `dist/camera.mjs` | Screen-relative rotation, smooth camera transitions and reading angles on the cube surface |
+| `dist/markings.mjs` | Tile and line markings rendered inside their buttons |
 | `tests/` | Game, puzzle, localization and hosting checks |
 | `scripts/serve.mjs` | Dependency-free local HTTP server |
 | `scripts/check.mjs` | Syntax and repository-path validation |

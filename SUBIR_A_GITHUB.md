@@ -2,7 +2,7 @@
 
 El juego está preparado para GitHub Pages. Esta entrega aún no crea un repositorio ni publica nada en tu cuenta.
 
-Esta versión incorpora giro relativo a la pantalla y números siempre en posición de lectura, incluidas las pistas `{n}`, `-n-` y los totales de línea. Las 45 comprobaciones automáticas pasan. La revisión visual y la prueba de interacción con ratón y pantalla táctil siguen pendientes: el servicio de previsualización no estaba disponible.
+Los números, las banderas y las minas se dibujan sobre la superficie de sus casillas. Al girar el cubo, cada símbolo gira dentro del plano de la cara para mantener la vertical de lectura y se estrecha con la perspectiva. Las pistas `{n}`, `-n-` y los totales de línea siguen la misma regla. Se han superado las 47 comprobaciones automáticas. La revisión visual y las pruebas con ratón y pantalla táctil siguen pendientes porque el servicio de previsualización no estaba disponible.
 
 1. Descomprime el ZIP y abre la carpeta `cubemine`, donde están `README.md`, `package.json`, `dist`, `scripts`, `tests` y `.github`.
 2. En tu cuenta de GitHub, crea un repositorio llamado `cubemine`, por ejemplo. Un repositorio público permite usar Pages con el plan gratuito. Créalo vacío, sin añadir otro README.

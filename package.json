@@ -1,6 +1,6 @@
 {
   "name": "cubemine",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Cube-surface Minesweeper with Spanish and English support and 12 fixed logic puzzles.",

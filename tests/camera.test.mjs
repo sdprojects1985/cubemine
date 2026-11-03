@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fromEuler,rotateOnScreen,rotateVector,interpolate,cssTransform,facePoint,projectClue} from '../dist/camera.mjs';
-import {createSurface} from '../dist/shapes.mjs';
+import {fromEuler,rotateOnScreen,rotateVector,interpolate,cssTransform,surfaceReadingAngles} from '../dist/camera.mjs';
+import {createSurface,cubeVertex} from '../dist/shapes.mjs';
+import {surfaceMark,tileMark} from '../dist/markings.mjs';
 
 const near=(actual,expected,epsilon=1e-9)=>assert.ok(Math.abs(actual-expected)<epsilon,`${actual} != ${expected}`);
 const nearVector=(actual,expected)=>actual.forEach((v,i)=>near(v,expected[i]));
 const inverse=q=>[-q[0],-q[1],-q[2],q[3]];
 const faces=createSurface(4).faces;
-const frame={centerX:350,centerY:220,originX:350,originY:200,perspective:1250};
+const frame={halfSize:150,eyeX:0,eyeY:-20,perspective:1250};
 
 test('the same drag moves the facing point right or down from every face and an upside-down cube',()=>{
   const poses=[...faces.map(f=>fromEuler(...f.view)),fromEuler(180,37),fromEuler(90,120),fromEuler(-135,-240),rotateOnScreen(fromEuler(-25,-34),190,240)];
@@ -47,27 +48,92 @@ test('long rotations preserve scale, orthogonal axes and reversibility without z
   assert.deepEqual(matrix.slice(12),[0,0,0,1]);
 });
 
-test('each face focus projects its clues upright at the corresponding cell centers',()=>{
-  for(const face of faces){
-    const q=fromEuler(...face.view),{point,normal}=facePoint(face,32,-19,150);
-    const p=projectClue(point,normal,q,1,frame),scale=1250/1100;
-    near(p.x,350+32*scale);near(p.y,200+(220-19-200)*scale);near(p.scale,scale);
-    const x=projectClue(facePoint(face,42,-19,150).point,normal,q,1,frame);
-    const y=projectClue(facePoint(face,32,-9,150).point,normal,q,1,frame);
-    assert.ok(x.x>p.x&&y.y>p.y);near(x.y,p.y);near(y.x,p.x);
+// Project actual finite segments on the cube independently of the angle solver.
+// This includes the face transforms, a displaced perspective origin, and zoom.
+function projectSurface(face, pose, zoom, view, x, y) {
+  const half = view.halfSize;
+  const local = cubeVertex(face.key, x + half, y + half, 2 * half).map(v => v - half);
+  const [px,py,pz] = rotateVector(pose, local).map(v => zoom * v);
+  const scale = view.perspective / (view.perspective - pz);
+  return [view.eyeX + (px - view.eyeX) * scale, view.eyeY + (py - view.eyeY) * scale];
+}
+
+test('a mark on every visible face reads top to bottom after rolls, tumbles and zooms', () => {
+  const poses = faces.map(face => fromEuler(...face.view));
+  let pose = fromEuler(-25,-34);
+  for (let i = 0; i < 120; i++) {
+    pose = rotateOnScreen(pose, 18*Math.cos(i/11), 25*Math.sin(i/17));
+    poses.push(pose);
+  }
+  const checked = new Set();
+  for (const face of faces) for (const q of poses) for (const zoom of [.65,1.4]) {
+    const view = {...frame, eyeX:47};
+    const point = (x,y) => projectSurface(face,q,zoom,view,x,y);
+    const center = point(0,0), right = point(10,0), down = point(0,10);
+    const signedArea = (right[0]-center[0])*(down[1]-center[1]) - (down[0]-center[0])*(right[1]-center[1]);
+    if (signedArea <= 1e-6) continue;
+    const angleAt = surfaceReadingAngles(face,q,zoom,view);
+    // Include ordinary cell centers and the outside line rail.
+    for (const [x,y] of [[0,0],[-125,108],[128,-121],[55,-170]]) {
+      const angle = angleAt(x,y) * Math.PI / 180;
+      const sin = Math.sin(angle), cos = Math.cos(angle);
+      const top = point(x+6*sin, y-6*cos);
+      const bottom = point(x-6*sin, y+6*cos);
+      near(top[0],bottom[0],1e-7);
+      assert.ok(top[1] < bottom[1], 'upright');
+      assert.ok(point(x+6*cos,y+6*sin)[0] > point(x-6*cos,y-6*sin)[0], 'unmirrored');
+    }
+    checked.add(face.key);
+  }
+  assert.equal(checked.size,6);
+});
+
+test('sideways tilt foreshortens ink by the same factor as the cell surface', () => {
+  const face = faces.find(face => face.key === 'front');
+  for (const yaw of [0,35,60,74]) {
+    const pose = fromEuler(0,yaw);
+    const angle = surfaceReadingAngles(face,pose,1,frame)(0,0);
+    near(angle,0);
+    const left = projectSurface(face,pose,1,frame,-5,0);
+    const right = projectSurface(face,pose,1,frame,5,0);
+    const top = projectSurface(face,pose,1,frame,0,-5);
+    const bottom = projectSurface(face,pose,1,frame,0,5);
+    const apparentAspect = (right[0]-left[0]) / (bottom[1]-top[1]);
+    if (yaw === 0) near(apparentAspect,1);
+    if (yaw === 60) assert.ok(apparentAspect > .38 && apparentAspect < .43);
+    if (yaw === 74) assert.ok(apparentAspect < .18);
   }
 });
 
-test('clue projection hides back faces, including grazing faces hidden by perspective',()=>{
-  for(const face of faces){
-    const q=fromEuler(...face.view);
-    for(const other of faces){
-      const {point,normal}=facePoint(other,0,0,150),p=projectClue(point,normal,q,1,frame);
-      assert.equal(Boolean(p),face.key===other.key,`${face.key}: ${other.key}`);
+test('focused faces and exact edge-on views yield finite in-plane turns', () => {
+  for (const face of faces) {
+    const aligned = fromEuler(...face.view);
+    near(surfaceReadingAngles(face,aligned,1,frame)(-105,42),0,1e-8);
+    for (const other of faces) {
+      const angle = surfaceReadingAngles(other,aligned,1,frame)(-105,42);
+      assert.ok(Number.isFinite(angle));
     }
   }
-  // A side face can have a positive screen-Z normal yet still point away from the eye.
-  assert.equal(projectClue([150,0,0],[1,0,0],fromEuler(0,-3),1,frame),null);
+});
+
+test('numbers, line clues, flags, mines and incorrect marks use the same ink inside their buttons', () => {
+  const cell = {revealed:false, flagged:false, count:3};
+  const cases = [
+    [tileMark({...cell,revealed:true},{}), '3'],
+    [tileMark({...cell,revealed:true,count:0},{showZero:true}), '0'],
+    [tileMark({...cell,revealed:true},{special:'together'}), '{3}'],
+    [tileMark({...cell,revealed:true},{special:'apart'}), '-3-'],
+    [tileMark({...cell,flagged:true},{}), '#i-flag'],
+    [tileMark(cell,{showMine:true}), '#i-mine'],
+    [tileMark({...cell,flagged:true},{incorrect:true}), '#i-close'],
+    [surfaceMark(0), '0'],
+  ];
+  for (const [markup, content] of cases) {
+    assert.match(markup,/^<span class="surface-mark" aria-hidden="true">.+<\/span>$/);
+    assert.ok(markup.includes(content));
+  }
+  assert.equal(tileMark(cell,{}),'');
+  assert.equal(tileMark({...cell,revealed:true,count:0},{}),'');
 });
 
 test('face transitions follow the shortest arc and keep a stable cube at every frame',()=>{

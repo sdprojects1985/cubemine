@@ -34,23 +34,26 @@ export function cssTransform(q,zoom=1){
   const z=rotateVector(q,[0,0,1]).map(v=>v*zoom);
   return `matrix3d(${[...x,0,...y,0,...z,0,0,0,0,1].join(',')})`;
 }
-export function facePoint(face,x,y,half){
-  const [a,b,c]=face.u,[d,e,f]=face.v;
-  const normal=[b*f-c*e,c*d-a*f,a*e-b*d];
-  return {normal,point:normal.map((n,i)=>face.u[i]*x+face.v[i]*y+n*half)};
-}
-export function projectClue(point,normal,orientation,zoom,frame){
-  const p=rotateVector(orientation,point).map(v=>v*zoom),n=rotateVector(orientation,normal);
-  const camera=[frame.originX-frame.centerX,frame.originY-frame.centerY,frame.perspective];
-  const towardCamera=camera.map((v,i)=>v-p[i]);
-  const facing=dot(n,towardCamera)/Math.hypot(...towardCamera);
-  // Test the actual perspective viewing ray, not just the normal's Z component.
-  if(facing<=0||frame.perspective-p[2]<=0)return null;
-  const perspectiveScale=frame.perspective/(frame.perspective-p[2]);
-  return {
-    x:frame.originX+(frame.centerX+p[0]-frame.originX)*perspectiveScale,
-    y:frame.originY+(frame.centerY+p[1]-frame.originY)*perspectiveScale,
-    scale:zoom*perspectiveScale,
-    facing,
+// Return the local 2D rotation for a mark at (x,y) on this face. The browser
+// projects the complete face, including its ink, using the cube's CSS transform.
+export function surfaceReadingAngles(face, orientation, zoom, {halfSize, eyeX, perspective}) {
+  const right = rotateVector(orientation, face.u);
+  const down = rotateVector(orientation, face.v);
+  const half = zoom * halfSize;
+  // The outward normal is right × down. Only its X and Z affect screen X.
+  const centerX = half * (right[1] * down[2] - right[2] * down[1]);
+  const centerZ = half * (right[0] * down[1] - right[1] * down[0]);
+
+  return function angleAt(x, y) {
+    const viewX = centerX + zoom * (right[0] * x + down[0] * y);
+    const viewZ = centerZ + zoom * (right[2] * x + down[2] * y);
+    const depth = perspective - viewZ;
+    const offsetX = viewX - eyeX;
+    // Derivatives of projected X along the two surface axes, up to a
+    // shared positive factor. Turn the mark so its vertical stroke has
+    // zero horizontal displacement. Local lengths and face tilt stay intact.
+    const across = depth * right[0] + offsetX * right[2];
+    const along = depth * down[0] + offsetX * down[2];
+    return Math.atan2(along, across) / radians;
   };
 }
